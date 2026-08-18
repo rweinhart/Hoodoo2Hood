@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pace Card">
+<meta name="theme-color" content="#0b1210">
+<link rel="manifest" href='data:application/manifest+json,{"name":"Santiam to Timberline Pace Card","short_name":"Pace Card","start_url":".","display":"standalone","background_color":"%230b1210","theme_color":"%230b1210"}'>
 <title>Santiam → Timberline · Pace Card</title>
 <style>
   * { box-sizing: border-box; margin: 0; }
@@ -255,11 +258,18 @@ function render() {
   });
 
   rail.querySelectorAll("input[type=time]").forEach((inp) => {
+    // Save as the value changes, but don't rebuild the page until the
+    // picker is dismissed — rebuilding mid-edit closes the iOS wheel.
     inp.addEventListener("change", (e) => {
       const i = e.target.getAttribute("data-i");
       if (e.target.value) state.actuals[i] = e.target.value;
       else delete state.actuals[i];
-      save(); render();
+      save();
+      if (document.activeElement !== e.target) render();
+    });
+    inp.addEventListener("blur", () => render());
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") e.target.blur();
     });
   });
 }
@@ -273,6 +283,11 @@ $("resetBtn").addEventListener("click", () => {
   if (confirm("Clear all entered arrival times?")) { state.actuals = {}; save(); render(); }
 });
 render();
+
+// Offline support when hosted (GitHub Pages etc.) — ignored for local files.
+if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+  navigator.serviceWorker.register("sw.js").catch(function () {});
+}
 </script>
 </body>
 </html>

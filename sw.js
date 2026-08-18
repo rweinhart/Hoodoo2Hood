@@ -1,5 +1,5 @@
 // Pace Card offline cache — cache-first, so the app opens with zero signal.
-const CACHE = "pacecard-v1";
+const CACHE = "pacecard-v2";
 const ASSETS = ["./", "./index.html"];
 
 self.addEventListener("install", (e) => {
