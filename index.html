@@ -78,6 +78,13 @@
   .actual-block { display: flex; flex-direction: column; gap: 4px; }
   .actual-block input { width: 118px; font-size: 15px; font-variant-numeric: tabular-nums; }
   .actual-block input.hit { color: #8fd6a0; border-color: #24422f; }
+  .actual-row { display: flex; gap: 6px; align-items: center; }
+  .clearbtn {
+    width: 34px; height: 34px; padding: 0; border-radius: 99px;
+    color: #ffb547; border-color: #4a3b1d; background: #191712;
+    font-size: 16px; line-height: 1; flex: 0 0 auto;
+  }
+  #resetBtn.armed { color: #0b1210; background: #ffb547; border-color: #ffb547; }
   .navbtn {
     display: inline-flex; align-items: center; gap: 6px;
     margin: 2px 0 10px; padding: 7px 13px;
@@ -233,8 +240,13 @@ function render() {
       : (r.fastETA ? '<div class="win">window ' + clockOf(r.fastETA) + " – " + clockOf(r.slowETA) + "</div>" : "");
     const actualInput = cp.kind === "start" ? "" :
       '<label class="actual-block"><span class="eta-label">ACTUAL</span>' +
+      '<span class="actual-row">' +
       '<input type="time" data-i="' + r.i + '" value="' + (state.actuals[r.i] || "") + '"' +
-      (done ? ' class="hit"' : "") + "></label>";
+      (done ? ' class="hit"' : "") + ">" +
+      (state.actuals[r.i]
+        ? '<button class="clearbtn" data-clear="' + r.i + '" aria-label="Clear this time">\u00D7</button>'
+        : "") +
+      "</span></label>";
 
     row.innerHTML =
       '<div class="milecol"><div class="dot' + (major ? " major" : "") + (done ? " hit" : "") + '"></div>' +
@@ -255,6 +267,14 @@ function render() {
       '<div class="eta ' + etaCls + '">' + clockOf(r.eta) + ' <span class="day">' + dayTag(r.eta) + "</span></div>" +
       sub + "</div>" + actualInput + "</div></div>";
     rail.appendChild(row);
+  });
+
+  rail.querySelectorAll("button[data-clear]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      delete state.actuals[e.currentTarget.getAttribute("data-clear")];
+      save(); render();
+    });
   });
 
   rail.querySelectorAll("input[type=time]").forEach((inp) => {
@@ -279,8 +299,20 @@ $("startInput").addEventListener("change", (e) => {
   state.startISO = e.target.value || "2026-08-29T05:30"; save(); render();
 });
 $("paceToggle").addEventListener("click", () => { state.carry = !state.carry; save(); render(); });
+let resetArmed = null;
 $("resetBtn").addEventListener("click", () => {
-  if (confirm("Clear all entered arrival times?")) { state.actuals = {}; save(); render(); }
+  const btn = $("resetBtn");
+  if (resetArmed) {
+    clearTimeout(resetArmed); resetArmed = null;
+    state.actuals = {}; save(); render();
+    btn.textContent = "Clear times"; btn.className = "";
+  } else {
+    btn.textContent = "Tap again to clear all"; btn.className = "armed";
+    resetArmed = setTimeout(() => {
+      resetArmed = null;
+      btn.textContent = "Clear times"; btn.className = "";
+    }, 3500);
+  }
 });
 render();
 
