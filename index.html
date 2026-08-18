@@ -124,7 +124,7 @@
 <footer>
   Mileages approximate — confirm against your GPX. Windows: fast ×0.93 · steady ×1.12 of plan pace.
   Entering an actual time re-projects everything downstream. Times save automatically on this phone only —
-  designate one timekeeper phone so the numbers live in one place. Works fully offline.
+  designate one timekeeper phone so the numbers live in one place. Works fully offline. Build v4.
 </footer>
 
 <script>
@@ -204,23 +204,30 @@ function compute() {
   return { start, rows, ratio, lastIdx };
 }
 
-function render() {
-  const { start, rows, ratio, lastIdx } = compute();
-  const fin = rows[rows.length - 1];
-  const target = new Date(start.getTime() + 24 * 3600000);
+function paintHeader(c) {
+  const fin = c.rows[c.rows.length - 1];
+  const target = new Date(c.start.getTime() + 24 * 3600000);
   const fd = (fin.eta - target) / 60000;
-
   $("finishTime").innerHTML = clockOf(fin.eta) + ' <span class="day">' + dayTag(fin.eta) + "</span>";
   $("targetLabel").textContent = "VS 24:00 TARGET (" + clockOf(target) + " " + dayTag(target) + ")";
   $("finishDelta").textContent = hoursMin(fd);
   $("finishDelta").className = "b-time " + (fd <= 0 ? "ok" : "late");
   $("banner").className = "banner" + (fd <= 0 ? "" : " late");
-  $("paceNote").textContent = lastIdx <= 0 ? "" :
-    ratio < 0.995 ? "moving " + Math.round((1 - ratio) * 100) + "% ahead of plan" :
-    ratio > 1.005 ? "moving " + Math.round((ratio - 1) * 100) + "% behind plan" :
+  $("paceNote").textContent = c.lastIdx <= 0 ? "" :
+    c.ratio < 0.995 ? "moving " + Math.round((1 - c.ratio) * 100) + "% ahead of plan" :
+    c.ratio > 1.005 ? "moving " + Math.round((c.ratio - 1) * 100) + "% behind plan" :
     "moving right on plan";
   $("paceToggle").className = state.carry ? "on" : "";
   $("paceToggleText").textContent = state.carry ? "Carrying current pace forward" : "Assuming plan pace from here";
+}
+
+let pendingRender = false;
+
+function render() {
+  pendingRender = false;
+  const c = compute();
+  const { start, rows } = c;
+  paintHeader(c);
 
   const rail = $("rail"); rail.innerHTML = "";
   rows.forEach((r, idx) => {
@@ -278,14 +285,35 @@ function render() {
   });
 
   rail.querySelectorAll("input[type=time]").forEach((inp) => {
-    // Save as the value changes, but don't rebuild the page until the
-    // picker is dismissed — rebuilding mid-edit closes the iOS wheel.
+    // Save as the value changes. While the input still has focus we only do
+    // safe in-place updates (banner + this row's \u00D7 button) — rebuilding the
+    // list mid-edit closes the iOS wheel. A full refresh happens on blur or
+    // the next tap anywhere else.
     inp.addEventListener("change", (e) => {
       const i = e.target.getAttribute("data-i");
       if (e.target.value) state.actuals[i] = e.target.value;
       else delete state.actuals[i];
       save();
-      if (document.activeElement !== e.target) render();
+      if (document.activeElement !== e.target) { render(); return; }
+      pendingRender = true;
+      paintHeader(compute());
+      const wrap = e.target.parentElement;
+      let btn = wrap.querySelector("button[data-clear]");
+      if (e.target.value && !btn) {
+        btn = document.createElement("button");
+        btn.className = "clearbtn";
+        btn.setAttribute("data-clear", i);
+        btn.setAttribute("aria-label", "Clear this time");
+        btn.textContent = "\u00D7";
+        btn.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          delete state.actuals[i];
+          save(); render();
+        });
+        wrap.appendChild(btn);
+      } else if (!e.target.value && btn) {
+        btn.remove();
+      }
     });
     inp.addEventListener("blur", () => render());
     inp.addEventListener("keydown", (e) => {
@@ -293,6 +321,15 @@ function render() {
     });
   });
 }
+
+// Fallback for iOS keeping the input focused after the picker's checkmark:
+// the next tap anywhere outside a time field completes the deferred refresh.
+document.addEventListener("pointerdown", (e) => {
+  if (!pendingRender) return;
+  const t = e.target;
+  if (t && t.closest && (t.closest("input[type=time]") || t.closest("button[data-clear]"))) return;
+  render();
+}, true);
 
 $("startInput").value = state.startISO;
 $("startInput").addEventListener("change", (e) => {
