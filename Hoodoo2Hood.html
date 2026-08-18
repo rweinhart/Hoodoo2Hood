@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Santiam → Timberline · Pace Card</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: #0b1210; color: #e8ede8;
+    font-family: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+    padding-bottom: 44px;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 26px 16px 0; }
+  .eyebrow { letter-spacing: .22em; font-size: 11px; color: #8fa39a; font-weight: 600; }
+  h1 {
+    font-size: clamp(32px, 8vw, 46px); line-height: 1.02;
+    text-transform: uppercase; font-weight: 800; letter-spacing: .01em;
+    margin: 6px 0 16px; font-stretch: condensed;
+  }
+  h1 .arrow { color: #ffb547; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 14px; }
+  .ctl { display: flex; flex-direction: column; gap: 4px; }
+  .ctl-name { font-size: 10px; letter-spacing: .14em; color: #8fa39a; font-weight: 700; }
+  input, button {
+    font-family: inherit; font-size: 14px; color: #e8ede8;
+    background: #121c19; border: 1px solid #23312c; border-radius: 8px; padding: 8px 10px;
+  }
+  input:focus-visible, button:focus-visible { outline: 2px solid #ffb547; outline-offset: 2px; }
+  input::-webkit-calendar-picker-indicator { filter: invert(.8); }
+  button { cursor: pointer; font-weight: 600; border-radius: 999px; }
+  #paceToggle { display: flex; align-items: center; gap: 8px; color: #8fa39a; }
+  #paceToggle.on { color: #ffb547; border-color: #4a3b1d; background: #191712; }
+  #paceToggle .pip { width: 8px; height: 8px; border-radius: 99px; background: #3a4a44; flex: 0 0 auto; }
+  #paceToggle.on .pip { background: #ffb547; }
+  #resetBtn { background: transparent; color: #8fa39a; }
+  .banner {
+    display: flex; justify-content: space-between; gap: 12px; align-items: center;
+    background: #121c19; border: 1px solid #24422f; border-radius: 12px; padding: 13px 15px;
+  }
+  .banner.late { border-color: #4a3b1d; }
+  .b-label { font-size: 10px; letter-spacing: .14em; color: #8fa39a; font-weight: 700; margin-bottom: 2px; }
+  .b-time { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; font-stretch: condensed; }
+  .b-time .day { font-size: 15px; color: #8fa39a; font-weight: 600; }
+  .b-time.ok { color: #8fd6a0; } .b-time.late { color: #ffb547; }
+  .pace-note { margin-top: 8px; font-size: 13px; color: #ffb547; font-weight: 600; min-height: 16px; }
+
+  .row { display: flex; gap: 13px; border-radius: 10px; padding: 10px 8px 0 4px; }
+  .row.night { background: rgba(21,27,46,.45); }
+  .row.done { opacity: .92; }
+  .milecol { position: relative; width: 40px; flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; }
+  .dot { width: 9px; height: 9px; border-radius: 99px; background: #3a4a44; margin-top: 6px; z-index: 1; }
+  .dot.major { width: 14px; height: 14px; background: #ffb547; border: 2px solid #0b1210; box-shadow: 0 0 0 2px #ffb547; }
+  .dot.hit { background: #8fd6a0; box-shadow: 0 0 0 2px #8fd6a0; }
+  .vline { position: absolute; top: 20px; bottom: -6px; width: 2px; background: #23312c; }
+  .mile { margin-top: 8px; font-size: 14px; font-weight: 800; color: #8fa39a; z-index: 1; background: #0b1210; padding: 1px 4px; border-radius: 4px; font-stretch: condensed; }
+  .body { flex: 1; min-width: 0; padding-bottom: 22px; }
+  .nameline { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .name { font-size: 19px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; font-stretch: condensed; }
+  .badge { font-size: 9px; font-weight: 800; letter-spacing: .12em; color: #0b1210; border-radius: 4px; padding: 2px 6px; }
+  .badge.crew { background: #ffb547; } .badge.water { background: #5fb0c9; }
+  .nighttag { font-size: 11px; color: #8fa39a; font-weight: 600; }
+  .note { font-size: 13px; color: #aebdb5; margin: 4px 0 10px; line-height: 1.45; max-width: 460px; }
+  .times { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .eta-label { font-size: 9px; letter-spacing: .16em; color: #8fa39a; font-weight: 800; }
+  .eta { font-size: 25px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; font-stretch: condensed; }
+  .eta .day { font-size: 13px; color: #8fa39a; font-weight: 600; }
+  .eta.actual { color: #8fd6a0; } .eta.reproj { color: #ffb547; }
+  .win { font-size: 12px; color: #8fa39a; margin-top: 1px; }
+  .delta { font-size: 12px; margin-top: 1px; font-weight: 600; }
+  .delta.ok { color: #8fd6a0; } .delta.late { color: #ffb547; }
+  .actual-block { display: flex; flex-direction: column; gap: 4px; }
+  .actual-block input { width: 118px; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .actual-block input.hit { color: #8fd6a0; border-color: #24422f; }
+  .navbtn {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin: 2px 0 10px; padding: 7px 13px;
+    border: 1px solid #4a3b1d; border-radius: 999px;
+    background: #191712; color: #ffb547;
+    font-size: 13px; font-weight: 700; text-decoration: none;
+  }
+  .navbtn:active { background: #241f14; }
+  .navbtn .pin { font-size: 14px; }
+  footer { max-width: 640px; margin: 26px auto 0; padding: 0 16px; font-size: 11.5px; color: #5f7069; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">PCT NORTHBOUND · AUG 29 · 94.5 MI</div>
+  <h1>Santiam <span class="arrow">→</span> Timberline</h1>
+  <div class="controls">
+    <label class="ctl"><span class="ctl-name">START</span>
+      <input type="datetime-local" id="startInput" value="2026-08-29T05:30">
+    </label>
+    <button id="paceToggle" class="on"><span class="pip"></span><span id="paceToggleText">Carrying current pace forward</span></button>
+    <button id="resetBtn">Clear times</button>
+  </div>
+  <div class="banner" id="banner">
+    <div>
+      <div class="b-label">PROJECTED FINISH</div>
+      <div class="b-time" id="finishTime"></div>
+    </div>
+    <div style="text-align:right">
+      <div class="b-label" id="targetLabel">VS 24:00 TARGET</div>
+      <div class="b-time" id="finishDelta"></div>
+    </div>
+  </div>
+  <div class="pace-note" id="paceNote"></div>
+</div>
+<main class="wrap" id="rail" style="padding-top:10px"></main>
+<footer>
+  Mileages approximate — confirm against your GPX. Windows: fast ×0.93 · steady ×1.12 of plan pace.
+  Entering an actual time re-projects everything downstream. Times save automatically on this phone only —
+  designate one timekeeper phone so the numbers live in one place. Works fully offline.
+</footer>
+
+<script>
+"use strict";
+const CPS = [
+  { mi: 0.0,  name: "Santiam Pass", plan: 0,    kind: "start", note: "Gun at 5:30 AM. Easy running, hike every grade." },
+  { mi: 10.9, name: "Rockpile Lake", plan: 153, water: true, note: "Small lake, usually holds late summer. Top off." },
+  { mi: 17.5, name: "Shale Lake", plan: 248,  water: true, note: "Seasonal — don't count on it in a dry year." },
+  { mi: 24.5, name: "Milk Creek", plan: 346,  water: true, note: "Glacial silt — prefilter or scoop upstream." },
+  { mi: 29.5, name: "Jefferson Park · Scout Lake", plan: 424, water: true, note: "Russell Creek ford just before. Filter here; Park Ridge climb is next." },
+  { mi: 33.5, name: "Breitenbush Lake", plan: 488, water: true, note: "After the Park Ridge descent. Steady from here to crew." },
+  { mi: 45.0, name: "Olallie Lake", plan: 654, kind: "crew", water: true, nav: [44.8129, -121.7861], navName: "Olallie Lake Resort", note: "CREW 1 — full reset. Headlamp, batteries, night layer leave WITH him. 10-min cap, 60s hip/ITB stretch." },
+  { mi: 52.0, name: "Lemiti Creek", plan: 779, water: true, note: "Reliable-ish meadow creek. Dark by now — settle into night rhythm." },
+  { mi: 60.0, name: "Warm Springs River", plan: 899, water: true, note: "Last dependable water before Timothy. Fill both bottles." },
+  { mi: 72.2, name: "Timothy Lake", plan: 1094, kind: "crew", water: true, nav: [45.101789, -121.746863], navName: "Timothy Lake crew pin", note: "CREW 2 — he will look rough. That's the plan. Food, bottles, batteries, OUT in <10. Stretch 60s." },
+  { mi: 73.5, name: "Little Crater Lake", plan: 1125, water: true, note: "Ice-cold artesian spring, 0.1 mi off trail. Best water of the route." },
+  { mi: 84.9, name: "Frog Lake · Hwy 26", plan: 1313, kind: "crew", nav: [45.2244, -121.6970], navName: "Frog Lake Sno-Park", note: "CREW 3 — caffeine goes in here. Last easy bail point: unless injured or unsafe, he LEAVES." },
+  { mi: 90.0, name: "Barlow Pass", plan: 1405, kind: "crew", nav: [45.2820, -121.6850], navName: "Barlow Pass Sno-Park", note: "CREW 4 — launch pad, 3-min stop. Leave by ~3:30 AM to keep 24:00 alive." },
+  { mi: 94.5, name: "Timberline Lodge", plan: 1526, kind: "finish", nav: [45.3311, -121.7110], navName: "Timberline Lodge", note: "2,000 ft up, soft sand at the top. Budget 2h+. Collect." }
+];
+const FAST = 0.93, SLOW = 1.12, SUNSET = 20.0, SUNRISE = 6.4;
+const KEY = "pct-pacecard-v1";
+
+let state = { startISO: "2026-08-29T05:30", actuals: {}, carry: true };
+try {
+  const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+  if (saved && saved.startISO) state = saved;
+} catch (e) {}
+
+const $ = (id) => document.getElementById(id);
+const pad = (n) => String(n).padStart(2, "0");
+const clockOf = (d) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+const dayTag = (d) => d.toLocaleDateString("en-US", { weekday: "short" });
+const hoursMin = (m) => {
+  const s = m < 0 ? "\u2212" : "+", a = Math.abs(Math.round(m));
+  return a >= 60 ? s + Math.floor(a/60) + "h " + pad(a%60) + "m" : s + a + "m";
+};
+const elapsedLabel = (m) => Math.floor(m/60) + ":" + pad(Math.round(m%60));
+const isNight = (d) => { const h = d.getHours() + d.getMinutes()/60; return h >= SUNSET || h < SUNRISE; };
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+function compute() {
+  const start = new Date(state.startISO);
+  const resolved = {}; let prev = start, lastIdx = -1;
+  CPS.forEach((cp, i) => {
+    const v = state.actuals[i]; if (!v) return;
+    const parts = v.split(":"); const d = new Date(start);
+    d.setHours(+parts[0], +parts[1], 0, 0);
+    while (d <= prev) d.setTime(d.getTime() + 86400000);
+    resolved[i] = d; prev = d; lastIdx = i;
+  });
+  let ratio = 1;
+  if (lastIdx > 0 && state.carry) {
+    const pe = CPS[lastIdx].plan, ae = (resolved[lastIdx] - start) / 60000;
+    if (pe > 0 && ae > 0) ratio = ae / pe;
+  }
+  const aPlan = lastIdx >= 0 ? CPS[lastIdx].plan : 0;
+  const aDate = lastIdx >= 0 ? resolved[lastIdx] : start;
+  const rows = CPS.map((cp, i) => {
+    const planETA = new Date(start.getTime() + cp.plan * 60000);
+    let eta, fastETA = null, slowETA = null, mode;
+    if (resolved[i]) { eta = resolved[i]; mode = "actual"; }
+    else if (i > lastIdx) {
+      const rem = cp.plan - aPlan;
+      eta = new Date(aDate.getTime() + rem * ratio * 60000);
+      fastETA = new Date(aDate.getTime() + rem * ratio * FAST * 60000);
+      slowETA = new Date(aDate.getTime() + rem * ratio * SLOW * 60000);
+      mode = lastIdx >= 0 ? "reproj" : "plan";
+    } else {
+      eta = planETA;
+      fastETA = new Date(start.getTime() + cp.plan * FAST * 60000);
+      slowETA = new Date(start.getTime() + cp.plan * SLOW * 60000);
+      mode = "plan";
+    }
+    return { cp, i, planETA, eta, fastETA, slowETA, mode, delta: (eta - planETA) / 60000 };
+  });
+  return { start, rows, ratio, lastIdx };
+}
+
+function render() {
+  const { start, rows, ratio, lastIdx } = compute();
+  const fin = rows[rows.length - 1];
+  const target = new Date(start.getTime() + 24 * 3600000);
+  const fd = (fin.eta - target) / 60000;
+
+  $("finishTime").innerHTML = clockOf(fin.eta) + ' <span class="day">' + dayTag(fin.eta) + "</span>";
+  $("targetLabel").textContent = "VS 24:00 TARGET (" + clockOf(target) + " " + dayTag(target) + ")";
+  $("finishDelta").textContent = hoursMin(fd);
+  $("finishDelta").className = "b-time " + (fd <= 0 ? "ok" : "late");
+  $("banner").className = "banner" + (fd <= 0 ? "" : " late");
+  $("paceNote").textContent = lastIdx <= 0 ? "" :
+    ratio < 0.995 ? "moving " + Math.round((1 - ratio) * 100) + "% ahead of plan" :
+    ratio > 1.005 ? "moving " + Math.round((ratio - 1) * 100) + "% behind plan" :
+    "moving right on plan";
+  $("paceToggle").className = state.carry ? "on" : "";
+  $("paceToggleText").textContent = state.carry ? "Carrying current pace forward" : "Assuming plan pace from here";
+
+  const rail = $("rail"); rail.innerHTML = "";
+  rows.forEach((r, idx) => {
+    const cp = r.cp, night = isNight(r.eta), done = r.mode === "actual";
+    const major = cp.kind === "crew" || cp.kind === "finish" || cp.kind === "start";
+    const row = document.createElement("section");
+    row.className = "row" + (night ? " night" : "") + (done ? " done" : "");
+
+    const badges =
+      (cp.kind === "crew" ? '<span class="badge crew">CREW</span>' : "") +
+      (cp.kind === "finish" ? '<span class="badge crew">FINISH</span>' : "") +
+      (cp.water ? '<span class="badge water">WATER</span>' : "");
+    const etaCls = done ? "actual" : r.mode === "reproj" ? "reproj" : "";
+    const sub = done
+      ? '<div class="delta ' + (r.delta <= 0 ? "ok" : "late") + '">' + hoursMin(r.delta) +
+        " vs plan · " + elapsedLabel((r.eta - start) / 60000) + " elapsed</div>"
+      : (r.fastETA ? '<div class="win">window ' + clockOf(r.fastETA) + " – " + clockOf(r.slowETA) + "</div>" : "");
+    const actualInput = cp.kind === "start" ? "" :
+      '<label class="actual-block"><span class="eta-label">ACTUAL</span>' +
+      '<input type="time" data-i="' + r.i + '" value="' + (state.actuals[r.i] || "") + '"' +
+      (done ? ' class="hit"' : "") + "></label>";
+
+    row.innerHTML =
+      '<div class="milecol"><div class="dot' + (major ? " major" : "") + (done ? " hit" : "") + '"></div>' +
+      (idx < rows.length - 1 ? '<div class="vline"></div>' : "") +
+      '<div class="mile">' + (cp.mi % 1 ? cp.mi.toFixed(1) : cp.mi) + "</div></div>" +
+      '<div class="body"><div class="nameline"><span class="name">' + cp.name + "</span>" + badges +
+      '<span class="nighttag">' + (night ? "\u263E dark" : "\u2600 light") + "</span></div>" +
+      '<div class="note">' + cp.note + "</div>" +
+      (cp.nav
+        ? '<a class="navbtn" target="_blank" rel="noopener" href="' +
+          (/(iPad|iPhone|iPod)/.test(navigator.userAgent)
+            ? "https://maps.apple.com/?daddr=" + cp.nav[0] + "," + cp.nav[1]
+            : "https://www.google.com/maps/dir/?api=1&destination=" + cp.nav[0] + "," + cp.nav[1]) +
+          '"><span class="pin">\u2316</span> Directions \u00B7 ' + cp.navName + "</a>"
+        : "") +
+      '<div class="times"><div style="min-width:150px"><div class="eta-label">' +
+      (done ? "ARRIVED" : r.mode === "reproj" ? "NEW ETA" : "PLAN ETA") + "</div>" +
+      '<div class="eta ' + etaCls + '">' + clockOf(r.eta) + ' <span class="day">' + dayTag(r.eta) + "</span></div>" +
+      sub + "</div>" + actualInput + "</div></div>";
+    rail.appendChild(row);
+  });
+
+  rail.querySelectorAll("input[type=time]").forEach((inp) => {
+    inp.addEventListener("change", (e) => {
+      const i = e.target.getAttribute("data-i");
+      if (e.target.value) state.actuals[i] = e.target.value;
+      else delete state.actuals[i];
+      save(); render();
+    });
+  });
+}
+
+$("startInput").value = state.startISO;
+$("startInput").addEventListener("change", (e) => {
+  state.startISO = e.target.value || "2026-08-29T05:30"; save(); render();
+});
+$("paceToggle").addEventListener("click", () => { state.carry = !state.carry; save(); render(); });
+$("resetBtn").addEventListener("click", () => {
+  if (confirm("Clear all entered arrival times?")) { state.actuals = {}; save(); render(); }
+});
+render();
+</script>
+</body>
+</html>
